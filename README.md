@@ -8,16 +8,16 @@ The premise is deliberately simple — adding two numbers — so the focus stays
 
 ## What this demo shows
 
-| Concept | How it appears here |
-|---|---|
-| **Workflows** | `AddWorkflow` — the durable, replayable orchestrator |
-| **Activities** | `add_numbers` — the actual work, running on a worker process |
-| **Task queues** | Workers compete for tasks on `math-task-queue` |
-| **Load balancing** | Three workers, each calculation goes to a different one |
-| **Heartbeating** | Activity signals the server every second it's still alive |
-| **Signals** | Activity → Workflow: live progress updates |
-| **Queries** | API server asks the workflow for current state without interrupting it |
-| **Fault tolerance** | Kill a worker mid-task; Temporal reassigns after heartbeat timeout |
+| Concept             | How it appears here                                                    |
+| ------------------- | ---------------------------------------------------------------------- |
+| **Workflows**       | `AddWorkflow` — the durable, replayable orchestrator                   |
+| **Activities**      | `add_numbers` — the actual work, running on a worker process           |
+| **Task queues**     | Workers compete for tasks on `math-task-queue`                         |
+| **Load balancing**  | Three workers, each calculation goes to a different one                |
+| **Heartbeating**    | Activity signals the server every second it's still alive              |
+| **Signals**         | Activity → Workflow: live progress updates                             |
+| **Queries**         | API server asks the workflow for current state without interrupting it |
+| **Fault tolerance** | Kill a worker mid-task; Temporal reassigns after heartbeat timeout     |
 
 ---
 
@@ -98,11 +98,11 @@ docker compose up -d
 
 This starts three containers:
 
-| Container | Purpose | Port |
-|---|---|---|
-| `postgresql` | Temporal's persistence backend | 5432 |
-| `temporal` | Temporal server (gRPC) | 7233 |
-| `temporal-ui` | Web UI | 8233 |
+| Container     | Purpose                        | Port |
+| ------------- | ------------------------------ | ---- |
+| `postgresql`  | Temporal's persistence backend | 5432 |
+| `temporal`    | Temporal server (gRPC)         | 7233 |
+| `temporal-ui` | Web UI                         | 8233 |
 
 The UI container starts immediately but the Temporal server takes ~30–60 s to finish schema setup. Check progress with:
 
@@ -238,12 +238,8 @@ WorkerOptions::new(TASK_QUEUE)
 
 ## Environment
 
-| Variable | Default | Notes |
-|---|---|---|
+| Variable   | Default                   | Notes                                 |
+| ---------- | ------------------------- | ------------------------------------- |
 | `RUST_LOG` | `mini_temporal=info,warn` | Increase to `debug` for SDK internals |
 
 To point at a different Temporal server, change `TEMPORAL_SERVER` in `src/shared.rs`.
-# mini-temporal
-# mini-temporal
-# mini-temporal
-# mini-temporal
