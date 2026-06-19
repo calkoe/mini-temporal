@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Temporal Demo – Addition</title>
+  <style>
+    :root {
+      --accent: #6366f1;
+      --ok:     #22c55e;
+      --warn:   #f59e0b;
+      --error:  #ef4444;
+      --bg:     #0f172a;
+      --card:   #1e293b;
+      --text:   #e2e8f0;
+      --muted:  #94a3b8;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem;
+    }
+    h1 { font-size: 1.75rem; margin-bottom: .3rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2.5rem; font-size: .95rem; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+      width: 100%;
+      max-width: 520px;
+    }
+    .card + .card { margin-top: 1.25rem; }
+
+    /* ── form ─────────────────────────────────────────────────────────── */
+    .inputs { display: flex; gap: .75rem; align-items: center; margin-bottom: 1.2rem; }
+    input[type=number] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      color: var(--text);
+      font-size: 1rem;
+      padding: .4rem .6rem;
+      text-align: center;
+      outline: none;
+      width: 90px;
+    }
+    input[type=number]:focus { border-color: var(--accent); }
+    .plus {
+      font-size: 1rem;
+      color: var(--muted);
+    }
+    button {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: .5rem;
+      padding: .75rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── status panel ─────────────────────────────────────────────────── */
+    #status-panel { display: none; margin-top: 1.8rem; }
+    .row { display: flex; justify-content: space-between; margin-bottom: .6rem; font-size: .9rem; }
+    .label { color: var(--muted); }
+    .value { font-weight: 600; }
+
+    /* badge */
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: .2rem .75rem;
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .badge-pending  { background: #1e3a5f; color: #60a5fa; }
+    .badge-running  { background: #1c3a2a; color: #4ade80; }
+    .badge-done     { background: #14532d; color: #86efac; }
+    .badge-error    { background: #450a0a; color: #fca5a5; }
+
+    /* progress bar */
+    .progress-wrap {
+      background: var(--bg);
+      border-radius: 999px;
+      height: 10px;
+      overflow: hidden;
+      margin-top: .3rem;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+
+    /* result */
+    #result-box {
+      margin-top: 1.4rem;
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--ok);
+      display: none;
+    }
+    #error-box {
+      margin-top: 1rem;
+      color: var(--error);
+      font-size: .9rem;
+      display: none;
+      word-break: break-word;
+    }
+
+    .wf-id {
+      margin-top: 1rem;
+      font-size: .75rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    /* ── workers panel ────────────────────────────────────────────────── */
+    .workers-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .workers-title { font-weight: 600; font-size: .95rem; }
+    .workers-count { color: var(--muted); font-size: .8rem; }
+
+    .worker-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .5rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .85rem;
+    }
+    .worker-row:last-child { border-bottom: none; }
+    .worker-left { display: flex; align-items: center; gap: .55rem; }
+    .worker-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .worker-id { font-family: monospace; }
+    .worker-time { color: var(--muted); font-size: .75rem; }
+    .workers-empty { color: var(--muted); font-size: .85rem; text-align: center; padding: .5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>Temporal Demo</h1>
+<p class="subtitle">Addition über Workflow &amp; verteilte Worker</p>
+
+<div class="card">
+  <!-- form -->
+  <div class="inputs">
+    <input id="x" type="number" value="12" />
+    <span class="plus">+</span>
+    <input id="y" type="number" value="30" />
+  </div>
+  <button id="btn" onclick="startCalc()">Berechnen</button>
+
+  <!-- live status panel -->
+  <div id="status-panel">
+    <div class="row">
+      <span class="label">Status</span>
+      <span id="badge" class="badge badge-pending">In Warteschlange</span>
+    </div>
+    <div class="row">
+      <span class="label">Worker</span>
+      <span id="worker" class="value" style="color:var(--muted)">–</span>
+    </div>
+    <div class="row" style="flex-direction:column; gap:.35rem;">
+      <div style="display:flex;justify-content:space-between;">
+        <span class="label">Fortschritt</span>
+        <span id="progress-text" class="value" style="color:var(--muted)">–</span>
+      </div>
+      <div class="progress-wrap">
+        <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div id="result-box"></div>
+    <div id="error-box"></div>
+    <div class="wf-id" id="wf-id"></div>
+  </div>
+</div>
+
+<!-- workers panel -->
+<div class="card">
+  <div class="workers-header">
+    <span class="workers-title">Active Workers</span>
+    <span class="workers-count" id="workers-count">–</span>
+  </div>
+  <div id="workers-list">
+    <p class="workers-empty">Connecting…</p>
+  </div>
+</div>
+
+<script>
+  // ── workflow polling ────────────────────────────────────────────────────────
+  let pollTimer = null;
+
+  async function startCalc() {
+    const x = parseInt(document.getElementById('x').value, 10);
+    const y = parseInt(document.getElementById('y').value, 10);
+
+    if (isNaN(x) || isNaN(y)) {
+      alert('Bitte zwei gültige Zahlen eingeben.');
+      return;
+    }
+
+    // reset UI
+    stopPolling();
+    document.getElementById('btn').disabled = true;
+    document.getElementById('status-panel').style.display = 'block';
+    document.getElementById('result-box').style.display = 'none';
+    document.getElementById('error-box').style.display = 'none';
+    setBadge('PENDING');
+    setWorker(null);
+    setProgress(null);
+    document.getElementById('wf-id').textContent = '';
+
+    let wfId;
+    try {
+      const res = await fetch('/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x, y }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unbekannter Fehler');
+      wfId = data.workflow_id;
+      document.getElementById('wf-id').textContent = 'Workflow-ID: ' + wfId;
+    } catch (err) {
+      showError('Fehler beim Starten: ' + err.message);
+      document.getElementById('btn').disabled = false;
+      return;
+    }
+
+    // start ~1 s polling
+    pollTimer = setInterval(() => poll(wfId), 1000);
+  }
+
+  async function poll(wfId) {
+    try {
+      const res  = await fetch('/result/' + encodeURIComponent(wfId));
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          showError('Workflow nicht gefunden: ' + wfId);
+          done();
+          return;
+        }
+        showError(data.error || 'Serverfehler');
+        done();
+        return;
+      }
+
+      setBadge(data.status);
+      setWorker(data.worker_id);
+      setProgress(data.progress);
+
+      if (data.status === 'COMPLETED') {
+        const el = document.getElementById('result-box');
+        el.textContent = data.result;
+        el.style.display = 'block';
+        done();
+      } else if (data.status === 'FAILED') {
+        showError(data.error || 'Unbekannter Fehler');
+        done();
+      }
+    } catch (err) {
+      // network error – keep polling
+      console.warn('poll error', err);
+    }
+  }
+
+  function done() {
+    stopPolling();
+    document.getElementById('btn').disabled = false;
+  }
+
+  function stopPolling() {
+    if (pollTimer !== null) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  function setBadge(status) {
+    const el    = document.getElementById('badge');
+    const map   = {
+      PENDING:   ['badge-pending', 'In Warteschlange'],
+      RUNNING:   ['badge-running', 'Wird verarbeitet'],
+      COMPLETED: ['badge-done',    'Fertig'],
+      FAILED:    ['badge-error',   'Fehler'],
+    };
+    const [cls, label] = map[status] || ['badge-pending', status];
+    el.className  = 'badge ' + cls;
+    el.textContent = label;
+  }
+
+  function setWorker(workerId) {
+    const el = document.getElementById('worker');
+    el.textContent = workerId ? 'Bearbeitet von: ' + workerId : '–';
+    el.style.color = workerId ? 'var(--text)' : 'var(--muted)';
+  }
+
+  function setProgress(progress) {
+    const bar  = document.getElementById('progress-bar');
+    const text = document.getElementById('progress-text');
+    if (!progress) {
+      bar.style.width   = '0%';
+      text.textContent  = '–';
+      text.style.color  = 'var(--muted)';
+    } else {
+      const pct         = Math.round((progress.current / progress.total) * 100);
+      bar.style.width   = pct + '%';
+      text.textContent  = progress.current + '/' + progress.total + ' Sekunden';
+      text.style.color  = 'var(--text)';
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-box');
+    el.textContent = msg;
+    el.style.display = 'block';
+    setBadge('FAILED');
+  }
+
+  // ── workers panel ───────────────────────────────────────────────────────────
+  async function pollWorkers() {
+    try {
+      const res = await fetch('/workers');
+      if (!res.ok) return;
+      const data = await res.json();
+      renderWorkers(data.workers || []);
+    } catch (e) {
+      console.warn('workers poll error', e);
+    }
+  }
+
+  function renderWorkers(workers) {
+    const list  = document.getElementById('workers-list');
+    const count = document.getElementById('workers-count');
+
+    const n = workers.length;
+    count.textContent = n === 0 ? 'none connected'
+                      : n === 1 ? '1 worker online'
+                      : n + ' workers online';
+
+    if (n === 0) {
+      list.innerHTML = '<p class="workers-empty">No workers connected — run <code>cargo run --bin worker</code></p>';
+      return;
+    }
+
+    list.innerHTML = workers.map(w => {
+      const s = w.last_seen_secs_ago;
+      const timeLabel = s < 2  ? 'just now'
+                      : s < 60 ? s + 's ago'
+                      : Math.round(s / 60) + 'm ago';
+      const dotColor  = s < 6  ? 'var(--ok)'
+                      : s < 30 ? 'var(--warn)'
+                      : 'var(--error)';
+      return `<div class="worker-row">
+        <div class="worker-left">
+          <span class="worker-dot" style="background:${dotColor}"></span>
+          <span class="worker-id">${w.id}</span>
+        </div>
+        <span class="worker-time">${timeLabel}</span>
+      </div>`;
+    }).join('');
+  }
+
+  pollWorkers();
+  setInterval(pollWorkers, 4000);
+</script>
+</body>
+</html>
